@@ -1,56 +1,199 @@
-#include <SPI.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+/**
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2018 by ThingPulse, Daniel Eichhorn
+ * Copyright (c) 2018 by Fabrice Weinberg
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * ThingPulse invests considerable time and money to develop these open source libraries.
+ * Please support us by buying our products (and not the clones) from
+ * https://thingpulse.com
+ *
+ */
+ 
+// Include the correct display library
 
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+// For a connection via I2C using the Arduino Wire include:
+#include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
+#include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
+// OR #include "SH1106Wire.h"   // legacy: #include "SH1106.h"
 
-// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-// The pins for I2C are defined by the Wire-library. 
-// On an arduino UNO:       A4(SDA), A5(SCL)
-// On an arduino MEGA 2560: 20(SDA), 21(SCL)
-// On an arduino LEONARDO:   2(SDA),  3(SCL), ...
-#define OLED_RESET     4 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+// For a connection via I2C using brzo_i2c (must be installed) include:
+// #include <brzo_i2c.h>        // Only needed for Arduino 1.6.5 and earlier
+// #include "SSD1306Brzo.h"
+// OR #include "SH1106Brzo.h"
+
+// For a connection via SPI include:
+// #include <SPI.h>             // Only needed for Arduino 1.6.5 and earlier
+// #include "SSD1306Spi.h"
+// OR #include "SH1106SPi.h"
+
+
+// Optionally include custom images
+#include "images.h"
+
+
+// Initialize the OLED display using Arduino Wire:
+SSD1306Wire display(0x3c, SDA, SCL);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
+// SSD1306Wire display(0x3c, D3, D5);  // ADDRESS, SDA, SCL  -  If not, they can be specified manually.
+// SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32);  // ADDRESS, SDA, SCL, OLEDDISPLAY_GEOMETRY  -  Extra param required for 128x32 displays.
+// SH1106 display(0x3c, SDA, SCL);     // ADDRESS, SDA, SCL
+
+// Initialize the OLED display using brzo_i2c:
+// SSD1306Brzo display(0x3c, D3, D5);  // ADDRESS, SDA, SCL
+// or
+// SH1106Brzo display(0x3c, D3, D5);   // ADDRESS, SDA, SCL
+
+// Initialize the OLED display using SPI:
+// D5 -> CLK
+// D7 -> MOSI (DOUT)
+// D0 -> RES
+// D2 -> DC
+// D8 -> CS
+// SSD1306Spi display(D0, D2, D8);  // RES, DC, CS
+// or
+// SH1106Spi display(D0, D2);       // RES, DC
+
+uint8_t A[155][155] = {0};
+#define DEMO_DURATION 3000
+typedef void (*Demo)(void);
+
+int demoMode = 0;
+int counter = 1;
+
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println();
 
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
-  }
 
-  // Show initial display buffer contents on the screen --
-  // the library initializes this with an Adafruit splash screen.
-  display.display();
-  delay(2000); // Pause for 2 seconds
+  // Initialising the UI will init the display too.
+  display.init();
 
-  // Clear the buffer
-  display.clearDisplay();
-  uint8_t A[155][155] = {0};
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_10);
 
-for(uint8_t i = 0; i<15; i++)
+}
+
+void drawFontFaceDemo() {
+    // Font Demo1
+    // create more fonts at http://oleddisplay.squix.ch/
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(0, 0, "Hello world");
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(0, 10, "Hello world");
+    display.setFont(ArialMT_Plain_24);
+    display.drawString(0, 26, "Hello world");
+}
+
+void drawTextFlowDemo() {
+    display.setFont(ArialMT_Plain_10);
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.drawStringMaxWidth(0, 0, 128,
+      "Lorem ipsum\n dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore." );
+}
+
+void drawTextAlignmentDemo() {
+    // Text alignment demo
+  display.setFont(ArialMT_Plain_10);
+
+  // The coordinates define the left starting point of the text
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, 10, "Left aligned (0,10)");
+
+  // The coordinates define the center of the text
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(64, 22, "Center aligned (64,22)");
+
+  // The coordinates define the right end of the text
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(128, 33, "Right aligned (128,33)");
+}
+
+void drawRectDemo() {
+      // Draw a pixel at given position
+        
+  for(uint8_t i = 0; i<15; i++)
   {
   for(uint8_t j = 0; j<150; j++)
 {
-A[i][j] ={1};
+A[i][j] = {1};
 }}
-for(uint8_t i=0; i<127;i++)
+for(int i=0; i<127;i++)
 {
-for(uint8_t j=0; j<31;j++)
+for(int j=0; j<63;j++)
 {
-  int n = A[i][j];
+ if(A[i][j] ==1)
+ {
+  display.setPixel(i, j);
+}}}
   
-  display.drawPixel(i, j,SSD1306_WHITE);
-}}
-  // Draw a single pixel in white
-//  display.drawPixel(10, 10, SSD1306_WHITE);
- // display.drawPixel(10, 31, SSD1306_WHITE);
-  display.display();
-  delay(2000);
 }
+
+void drawCircleDemo() {
+  for (int i=1; i < 8; i++) {
+    display.setColor(WHITE);
+    display.drawCircle(32, 32, i*3);
+    if (i % 2 == 0) {
+      display.setColor(BLACK);
+    }
+    display.fillCircle(96, 32, 32 - i* 3);
+  }
+}
+
+void drawProgressBarDemo() {
+  int progress = (counter / 5) % 100;
+  // draw the progress bar
+  display.drawProgressBar(0, 32, 120, 10, progress);
+
+  // draw the percentage as String
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(64, 15, String(progress) + "%");
+}
+
+void drawImageDemo() {
+    // see http://blog.squix.org/2015/05/esp8266-nodemcu-how-to-create-xbm.html
+    // on how to create xbm files
+    display.drawXbm(34, 14, WiFi_Logo_width, WiFi_Logo_height, WiFi_Logo_bits);
+}
+
+Demo demos[] = {drawFontFaceDemo, drawTextFlowDemo, drawTextAlignmentDemo, drawRectDemo, drawCircleDemo, drawProgressBarDemo, drawImageDemo};
+int demoLength = (sizeof(demos) / sizeof(Demo));
+long timeSinceLastModeSwitch = 0;
+
 void loop() {
+  // clear the display
+  display.clear();
+  // draw the current demo method
+  //demos[demoMode]();
+  drawRectDemo();
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(10, 128, String(millis()));
+  // write the buffer to the display
+  display.display();
+/*
+  if (millis() - timeSinceLastModeSwitch > DEMO_DURATION) {
+    demoMode = (demoMode + 1)  % demoLength;
+    timeSinceLastModeSwitch = millis();
+  }*/
+  counter++;
+  delay(10);
 }
